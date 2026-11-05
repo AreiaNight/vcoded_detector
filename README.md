@@ -8,6 +8,7 @@
 
 ## 𝐅𝐞𝐚𝐭𝐮𝐫𝐞𝐬
 
+<br><br>
  <img src="https://i.pinimg.com/736x/b1/28/89/b12889ec1860d4b8223491db1ceaa8fa.jpg" alt="img" align="right" width="400px"> <br><br>
 <br><br><br>
 
