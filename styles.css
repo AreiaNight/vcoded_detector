@@ -349,3 +349,28 @@ body {
     transition: none !important;
   }
 }
+
+
+[hidden] { display: none !important; }
+.card h1 { margin: 0; font-size: 26px; font-weight: 400; text-align: center; }
+.card p.intro { font: 15px/1.5 var(--ui); color: var(--muted); }
+.card .help, .help { font: 13px/1.6 var(--ui); color: var(--muted); text-align: left; margin: 0; }
+.card label { width: 100%; font: 14px var(--ui); color: var(--silver); }
+.card select { box-sizing: border-box; width: 100%; padding: 12px; font: 16px var(--ui); background: var(--green-deep); color: var(--mist); border: 1px solid var(--silver-lo); border-radius: 4px; }
+button:focus-visible, select:focus-visible { outline: 2px solid var(--emerald); outline-offset: 4px; }
+.mode-options { display: grid; gap: 14px; width: 100%; }
+.mode-choice { padding: 20px; text-align: left; color: var(--mist); background: var(--green); border: 1px solid var(--line); border-radius: 12px; cursor: pointer; font: 15px var(--ui); }
+.mode-choice:hover { border-color: var(--emerald); }
+.mode-choice strong, .mode-choice span { display: block; }
+.mode-choice strong { margin-bottom: 8px; font-size: 17px; }
+.mode-choice span { color: var(--muted); line-height: 1.5; }
+.back { align-self: flex-start; padding: 7px 0; border: 0; background: transparent; color: var(--emerald); cursor: pointer; font: 14px var(--ui); }
+.back:disabled { opacity: .5; cursor: default; }
+#batch-progress { width: 100%; margin-top: 18px; accent-color: var(--emerald); }
+#batch-rows { margin-top: 12px; }
+.scan-result { padding: 16px 0; border-top: 1px solid var(--line); }
+.scan-result h3 { margin: 0 0 8px; font-size: 14px; font-weight: 500; overflow-wrap: anywhere; }
+.scan-result p { margin: 4px 0; overflow-wrap: anywhere; }
+.scan-error { color: var(--danger); }
+.scan-result summary { cursor: pointer; color: var(--emerald); padding: 6px 0; }
+.scan-result ul { padding-left: 22px; overflow-wrap: anywhere; }

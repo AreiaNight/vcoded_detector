@@ -43,9 +43,9 @@
 
 ## 𝐑𝐞𝐪𝐮𝐢𝐫𝐞𝐦𝐞𝐧𝐭𝐬
 
-- Python 3.[VERSION] or later
-- Go [VERSION] or later
-- [Python dependencies, if any, listed in `requirements.txt`]
+- Python 3.9 or later
+- Go 1.22 or later
+- Python dependencies listed in `requirements.txt`
 
 ## 𝐈𝐧𝐬𝐭𝐚𝐥𝐥𝐚𝐭𝐢𝐨𝐧
 
@@ -141,4 +141,100 @@ For HTTPS, you can use Certbot:
 
 ```bash
 sudo certbot --nginx -d your-domain.com
+```
+
+
+## Extract URLs from stored messages
+
+Install the Python dependencies:
+
+```sh
+python3 -m pip install -r requirements.txt
+```
+
+Set `COROBOMAIL_DSN` in your terminal environment to your PostgreSQL connection
+string. Do not store credentials in shared source files. The extractor uses a
+read-only connection and defaults to `cashout_method_id = 4`. The default selection is **15 messages**, ordered by message ID.
+Use `--limit 50` to select a larger sample without editing SQL.
+
+From the project folder, run:
+
+```sh
+python3 extract_urls.py --output urls.txt
+python3 crawler.py --urls-file urls.txt > scan_results.json
+```
+
+The extractor decodes plain-text and HTML email bodies, skips attachments, and
+exports unique HTTP(S) links. It does not visit the links. `urls.txt` is overwritten
+on each extraction and contains no message IDs.
+
+Batch scanning prints a JSON array with each URL and its analysis, or an error
+record when a request fails. It continues after failures and exits with status 1
+if any request fails. HTTP error responses still include their status and match
+counts, following the dashboard's existing behavior. Counts are indicators for
+review, not proof of AI generation or fraud.
+
+Single-URL scanning remains compatible with the dashboard:
+
+```sh
+python3 crawler.py https://example.com
+python3 crawler.py --url https://example.com
+```
+
+The manual URL option scans one URL at a time. The database option selects
+messages and displays its own streamed results; it does not load the batch results file. Its Go server runs the `python` command, so ensure that command
+points to an environment with the required dependencies.
+
+Run the offline tests (no database or external requests):
+
+```sh
+python3 -m unittest discover -s tests -v
+```
+
+
+## Dashboard scan modes
+
+The first screen offers **Enter a URL** and **Scan database messages**.
+The database screen loads the `method` labels and IDs from `cashout_methods`.
+Choose a method, enter a limit between 1 and 1,000 messages (default 15), and run
+the crawler. The limit applies to distinct messages, not URLs. Duplicate URLs
+are scanned once. Each request has its own in-memory results and does not
+overwrite `urls.txt` or `scan_results.json`.
+
+Before starting the Go server, set `COROBOMAIL_DSN` in the same terminal. The
+Python debugger's `launch.json` environment does not apply to `go run`. For example,
+replace the placeholders in:
+
+```sh
+export COROBOMAIL_DSN='host=localhost port=YOUR_PORT dbname=YOUR_DATABASE user=YOUR_USER password=YOUR_PASSWORD'
+go run dashboard.go
+```
+
+The server uses `python` by default. To select a virtual environment explicitly:
+
+```sh
+export PYTHON=/absolute/path/to/venv/bin/python
+go run dashboard.go
+```
+
+The selected Python environment needs `requirements.txt`. Database operations
+are read-only and require access to `cashout_methods(id, method)`,
+`target_accounts(message_id, cashout_method_id)`, and `messages(id, raw_message_text)`.
+
+The results show messages selected, unique URLs, per-URL HTTP status, match
+counts, and request errors. HTTP error pages are marked separately from failed
+connections. Results stream as they arrive; **Stop scan** cancels the worker and
+retains results already displayed. An empty selection is reported explicitly.
+The scan has a 30-minute overall limit; partial results remain visible if interrupted.
+
+The CLI also accepts a configurable message limit:
+
+```sh
+python3 extract_urls.py --cashout-method-id 4 --limit 50 --output urls.txt
+```
+
+Additional server tests (no database or network requests):
+
+```sh
+go test dashboard.go dashboard_test.go
 ```

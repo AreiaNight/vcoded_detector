@@ -1,3 +1,4 @@
+import argparse
 import sys
 import json
 from pathlib import Path
@@ -37,14 +38,64 @@ def analyze(url):
     }
 
 
-if __name__ == "__main__":
-    # sys.argv[1] is the URL sent by Go. The JSON goes to stdout, errors to stderr.
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Scan one URL or a file of URLs.")
+    parser.add_argument("target", nargs="?", help="URL supplied by the dashboard")
+    source = parser.add_mutually_exclusive_group()
+    source.add_argument("--url", help="A single URL to scan")
+    source.add_argument("--urls-file", type=Path, help="File with one URL per line")
+    args = parser.parse_args(argv)
+    if args.target and (args.url or args.urls_file):
+        parser.error("Use a positional URL, --url, or --urls-file, not a combination")
+    if not (args.target or args.url or args.urls_file):
+        parser.error("Provide a URL or --urls-file")
+
+    batch = args.urls_file is not None
     try:
-        data = analyze(sys.argv[1])
-    except requests.Timeout:
-        sys.exit("The page took too long to respond")
-    except requests.ConnectionError:
-        sys.exit("Could not connect to the page")
-    except requests.RequestException as error:
-        sys.exit(f"Could not fetch the page: {error}")
-    print(json.dumps(data))
+        urls = (args.urls_file.read_text(encoding="utf-8").splitlines()
+                if batch else [args.target or args.url])
+        urls = list(dict.fromkeys(url.strip() for url in urls if url.strip()))
+    except (OSError, UnicodeError) as error:
+        print(f"Could not read URL file: {error}", file=sys.stderr)
+        return 1
+
+    records = []
+    failed = False
+    for url in urls:
+        try:
+            data = analyze(url)
+        except requests.Timeout:
+            error = "The page took too long to respond"
+        except requests.exceptions.SSLError as exc:
+            error = f"TLS/SSL error: {exc}"
+        except requests.ConnectionError as exc:
+            error = "Could not connect to the page"
+            if str(exc):
+                error += f": {exc}"
+        except (requests.RequestException, OSError, UnicodeError) as exc:
+            error = f"Could not analyze the page: {exc}"
+        else:
+            records.append({"url": url, **data} if batch else data)
+            if batch:
+                print(
+                    f"Scanned {url}: HTTP {data['status']}; "
+                    f"total matches: {data['total']}",
+                    file=sys.stderr, end="\n\n",
+                )
+            continue
+        failed = True
+        print(f"Failed to scan {url}: {error}", file=sys.stderr, end="\n\n")
+        if batch:
+            records.append({"url": url, "error": error})
+
+    # Preserve the dashboard's single-object JSON contract. Batch mode emits an array.
+    if batch:
+        blocks = [json.dumps(record, indent=2) for record in records]
+        print("[\n" + ",\n\n".join(blocks) + "\n]" if blocks else "[]")
+    elif records:
+        print(json.dumps(records[0]))
+    return int(failed)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
