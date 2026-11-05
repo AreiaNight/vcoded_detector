@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vibe code scan</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="card">
+        <p>Vibe code scanner</p>
+        <form id="form">
+            <input type="url" id="url" placeholder="https://example.com" aria-label="URL to scan" required/>
+            <div class="action">
+                <button type="submit" id="submit">Scan</button>
+            </div>
+        </form>
+    </div>
+
+    <p id="status" class="estado" role="status"></p>
+
+    <section id="results" class="resultados" aria-labelledby="results-title" hidden>
+        <header class="resultados-head">
+            <h2 id="results-title">Results</h2>
+            <p id="source" class="fuente"></p>
+        </header>
+        <div class="resumen">
+            <div class="metrica"><span>Total matches</span><strong id="total">0</strong></div>
+            <div class="metrica"><span>Signals found</span><strong id="word-count">0</strong></div>
+            <div class="metrica"><span>HTTP status</span><strong id="http-status">-</strong></div>
+        </div>
+        <div class="tabla" tabindex="0" role="region" aria-label="Signals found, most frequent first">
+            <table>
+                <thead>
+                    <tr>
+                        <th scope="col">Signal</th>
+                        <th scope="col" class="col-barra">Relative to top signal</th>
+                        <th scope="col" class="num">Matches</th>
+                    </tr>
+                </thead>
+                <tbody id="rows"></tbody>
+            </table>
+        </div>
+    </section>
+    <script src="script.js"></script>
+</body>
+</html>
