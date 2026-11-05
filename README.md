@@ -1,26 +1,28 @@
-# Vibe coded detector
+# 𝐕𝐢𝐛𝐞 𝐜𝐨𝐝𝐞𝐝 𝐝𝐞𝐭𝐞𝐜𝐭𝐨𝐫
 
 > A simply vibe code detector
+ <img src="https://i.pinimg.com/736x/b1/28/89/b12889ec1860d4b8223491db1ceaa8fa.jpg" alt="img" align="right" width="400px"> <br><br>
+<br><br><br>
 
 **vcoded_detector** is a tool that analyzes websites for patterns and keywords associated with vibe-coded (AI-generated) code. Paste the link of any page: the tool downloads its source code, checks it against a list of patterns (`wordlist.txt`), and displays statistics in a web dashboard.
 
 ![Dashboard preview](docs/dashboard.png)
 
-## Features
+## 𝐅𝐞𝐚𝐭𝐮𝐫𝐞𝐬
 
 - Analyzes the source code of any public URL.
 - Detects patterns and keywords defined in an editable wordlist.
 - Simple web dashboard: just paste the link.
 - Match statistics once the analysis finishes.
 
-## How It Works
+## 𝐇𝐨𝐰 𝐈𝐭 𝐖𝐨𝐫𝐤𝐬
 
 1. You enter a URL in the dashboard.
 2. `crawler.py` fetches the page's source code.
 3. The source is checked against the entries in `wordlist.txt`.
 4. The dashboard displays the analysis statistics.
 
-## Project Structure
+## 𝐏𝐫𝐨𝐣𝐞𝐜𝐭 𝐒𝐭𝐫𝐮𝐜𝐭𝐮𝐫𝐞
 
 | File | Description |
 |---|---|
@@ -31,22 +33,22 @@
 | `styles.css` | Dashboard styles. |
 | `wordlist.txt` | List of patterns and keywords to search for. |
 
-## Requirements
+## 𝐑𝐞𝐪𝐮𝐢𝐫𝐞𝐦𝐞𝐧𝐭𝐬
 
 - Python 3.[VERSION] or later
 - Go [VERSION] or later
 - [Python dependencies, if any, listed in `requirements.txt`]
 
-## Installation
+## 𝐈𝐧𝐬𝐭𝐚𝐥𝐥𝐚𝐭𝐢𝐨𝐧
 
 ```bash
 git clone https://github.com/AreiaNight/vcoded_detector.git
 cd vcoded_detector
 ```
 
-## Usage
+## 𝐔𝐬𝐚𝐠𝐞
 
-### Running Locally
+### 𝐑𝐮𝐧𝐧𝐢𝐧𝐠 𝐋𝐨𝐜𝐚𝐥𝐥𝐲
 
 Start the dashboard server:
 
@@ -64,19 +66,19 @@ Paste the link of the page you want to analyze and review the stats.
 
 ![Dashboard preview](docs/stats.png)
 
-### Customizing the Wordlist
+### 𝐂𝐮𝐬𝐭𝐨𝐦𝐢𝐳𝐢𝐧𝐠 𝐭𝐡𝐞 𝐖𝐨𝐫𝐝𝐥𝐢𝐬𝐭
 
 Edit `wordlist.txt` to add or remove patterns, or change the path to the list directly in `crawler.py` or `dashboard.go`.
 
-## Server Deployment
+## 𝐒𝐞𝐫𝐯𝐞𝐫 𝐃𝐞𝐩𝐥𝐨𝐲𝐦𝐞𝐧𝐭
 
 The recommended approach is to run the tool on a server so it stays available.
 
-### 1. Prepare the Server
+### 𝟏. 𝐏𝐫𝐞𝐩𝐚𝐫𝐞 𝐭𝐡𝐞 𝐒𝐞𝐫𝐯𝐞𝐫
 
 A Linux server (Ubuntu 22.04 or similar) with SSH access, and Go and Python 3 installed.
 
-### 2. Clone and Build
+### 𝟐. 𝐂𝐥𝐨𝐧𝐞 𝐚𝐧𝐝 𝐁𝐮𝐢𝐥𝐝
 
 ```bash
 git clone https://github.com/AreiaNight/vcoded_detector.git
@@ -84,7 +86,7 @@ cd vcoded_detector
 go build -o vcoded_detector dashboard.go
 ```
 
-### 3. Run as a Service (systemd)
+### 𝟑. 𝐑𝐮𝐧 𝐚𝐬 𝐚 𝐒𝐞𝐫𝐯𝐢𝐜𝐞 (𝐬𝐲𝐬𝐭𝐞𝐦𝐝)
 
 Create the file `/etc/systemd/system/vcoded_detector.service`:
 
@@ -112,7 +114,7 @@ sudo systemctl enable --now vcoded_detector
 sudo systemctl status vcoded_detector
 ```
 
-### 4. (Optional) Reverse Proxy with Nginx and HTTPS
+### 𝟒. (𝐎𝐩𝐭𝐢𝐨𝐧𝐚𝐥) 𝐑𝐞𝐯𝐞𝐫𝐬𝐞 𝐏𝐫𝐨𝐱𝐲 𝐰𝐢𝐭𝐡 𝐍𝐠𝐢𝐧𝐱 𝐚𝐧𝐝 𝐇𝐓𝐓𝐏𝐒
 
 ```nginx
 server {
