@@ -7,15 +7,41 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="card">
-        <p>Vibe code scanner</p>
+    <main id="home" class="card home-card">
+        <h1>Vibe code scanner</h1>
+        <p class="intro">Choose where to start your scan.</p>
+        <div class="mode-options">
+            <button type="button" id="choose-manual" class="mode-choice">
+                <strong>Enter a URL</strong><span>Analyze one website manually.</span>
+            </button>
+            <button type="button" id="choose-database" class="mode-choice">
+                <strong>Scan database messages</strong><span>Choose a cashout method and message limit.</span>
+            </button>
+        </div>
+    </main>
+    <section id="manual" class="card" aria-labelledby="manual-title" hidden>
+        <button type="button" class="back" data-home>← Back</button>
+        <h1 id="manual-title" tabindex="-1">Enter a URL</h1>
         <form id="form">
-            <input type="url" id="url" placeholder="https://example.com" aria-label="URL to scan" required/>
-            <div class="action">
-                <button type="submit" id="submit">Scan</button>
-            </div>
+            <label for="url">URL to scan</label>
+            <input type="url" id="url" placeholder="https://example.com" required/>
+            <div class="action"><button type="submit" id="submit">Scan</button></div>
         </form>
-    </div>
+    </section>
+    <section id="database" class="card" aria-labelledby="database-title" hidden>
+        <button type="button" class="back" data-home>← Back</button>
+        <h1 id="database-title" tabindex="-1">Scan database messages</h1>
+        <form id="database-form">
+            <label for="method">Cashout method</label>
+            <select id="method" required disabled><option value="">Loading methods…</option></select>
+            <p id="methods-status" class="help" role="status"></p>
+            <button type="button" id="reload-methods" class="back">Reload methods</button>
+            <label for="limit">Number of messages</label>
+            <input type="number" id="limit" value="15" min="1" max="1000" step="1" required aria-describedby="limit-help"/>
+            <p id="limit-help" class="help">Select up to 1,000 messages. Each message may contain multiple URLs; duplicates are scanned once.</p>
+            <div class="action"><button type="submit" id="database-submit" disabled>Run crawler</button></div>
+        </form>
+    </section>
 
     <p id="status" class="estado" role="status"></p>
 
@@ -41,6 +67,13 @@
                 <tbody id="rows"></tbody>
             </table>
         </div>
+    </section>
+    <section id="batch-results" class="resultados" aria-labelledby="batch-title" hidden>
+        <header class="resultados-head"><h2 id="batch-title">Database scan results</h2></header>
+        <p id="batch-summary" class="help" role="status"></p>
+        <progress id="batch-progress" max="1" value="0" aria-label="URLs processed"></progress>
+        <button type="button" id="cancel-scan" class="back">Stop scan</button>
+        <div id="batch-rows"></div>
     </section>
     <script src="script.js"></script>
 </body>
