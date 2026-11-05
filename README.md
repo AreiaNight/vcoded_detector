@@ -23,7 +23,7 @@
 2. `crawler.py` fetches the page's source code.
 3. The source is checked against the entries in `wordlist.txt`.
 4. The dashboard displays the analysis statistics.
-
+<br><br><br>
 ## 𝐏𝐫𝐨𝐣𝐞𝐜𝐭 𝐒𝐭𝐫𝐮𝐜𝐭𝐮𝐫𝐞
 
 | File | Description |
