@@ -1,14 +1,15 @@
 # 𝐕𝐢𝐛𝐞 𝐜𝐨𝐝𝐞𝐝 𝐝𝐞𝐭𝐞𝐜𝐭𝐨𝐫
 
 > A simply vibe code detector
- <img src="https://i.pinimg.com/736x/b1/28/89/b12889ec1860d4b8223491db1ceaa8fa.jpg" alt="img" align="right" width="400px"> <br><br>
-<br><br><br>
 
 **vcoded_detector** is a tool that analyzes websites for patterns and keywords associated with vibe-coded (AI-generated) code. Paste the link of any page: the tool downloads its source code, checks it against a list of patterns (`wordlist.txt`), and displays statistics in a web dashboard.
 
 ![Dashboard preview](docs/dashboard.png)
 
 ## 𝐅𝐞𝐚𝐭𝐮𝐫𝐞𝐬
+
+ <img src="https://i.pinimg.com/736x/b1/28/89/b12889ec1860d4b8223491db1ceaa8fa.jpg" alt="img" align="right" width="400px"> <br><br>
+<br><br><br>
 
 - Analyzes the source code of any public URL.
 - Detects patterns and keywords defined in an editable wordlist.
