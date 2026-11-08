@@ -8,6 +8,7 @@ import sys
 import requests
 
 from crawler import analyze
+from export_results import export_results
 from extract_urls import export_urls
 
 MAX_MESSAGES = 1000
@@ -35,7 +36,7 @@ def emit(event):
     print(json.dumps(event), flush=True)
 
 
-def scan_database(connection, method_id, limit):
+def scan_database(connection, method_id, limit, export_path=None):
     if not 1 <= limit <= MAX_MESSAGES:
         raise ValueError(f"Message limit must be between 1 and {MAX_MESSAGES}.")
     with connection.cursor() as cursor:
@@ -49,15 +50,25 @@ def scan_database(connection, method_id, limit):
     connection.rollback()
     emit({"event": "started", "messages": messages, "urls": total, "method": row[0]})
     failures = 0
+    records = []
     for index, url in enumerate(output.getvalue().splitlines(), start=1):
         try:
             data = {"url": url, **analyze(url)}
         except (requests.RequestException, OSError, UnicodeError) as exc:
             failures += 1
             data = {"url": url, "error": f"{type(exc).__name__}: {exc}"}
+        records.append(data)
         emit({"event": "result", "completed": index, "urls": total, "data": data})
     emit({"event": "completed", "messages": messages, "urls": total,
           "fetched": total - failures, "failed": failures})
+    if export_path:
+        params = {"cashout_method_id": method_id, "cashout_method": row[0],
+                  "limit": limit, "messages": messages}
+        try:
+            path = export_results(export_path, "database", records, params)
+            print(f"Report exported to {path}", file=sys.stderr)
+        except OSError as exc:
+            print(f"Could not write export file: {exc}", file=sys.stderr)
 
 
 def main(argv=None):
@@ -65,6 +76,8 @@ def main(argv=None):
     parser.add_argument("--list-methods", action="store_true")
     parser.add_argument("--cashout-method-id", type=int)
     parser.add_argument("--limit", type=int, default=15)
+    parser.add_argument("--export", metavar="PATH",
+                        help="Also write a structured JSON report to PATH")
     args = parser.parse_args(argv)
     if not args.list_methods and (args.cashout_method_id is None or not 1 <= args.limit <= MAX_MESSAGES):
         parser.error(f"Provide --cashout-method-id and --limit between 1 and {MAX_MESSAGES}")
@@ -74,7 +87,7 @@ def main(argv=None):
         if args.list_methods:
             print(json.dumps(list_methods(connection)))
         else:
-            scan_database(connection, args.cashout_method_id, args.limit)
+            scan_database(connection, args.cashout_method_id, args.limit, args.export)
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 1

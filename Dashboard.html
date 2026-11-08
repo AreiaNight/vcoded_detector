@@ -49,6 +49,7 @@
         <header class="resultados-head">
             <h2 id="results-title">Results</h2>
             <p id="source" class="fuente"></p>
+            <button type="button" id="export-manual" class="back">Export JSON</button>
         </header>
         <div class="resumen">
             <div class="metrica"><span>Total matches</span><strong id="total">0</strong></div>
@@ -73,6 +74,7 @@
         <p id="batch-summary" class="help" role="status"></p>
         <progress id="batch-progress" max="1" value="0" aria-label="URLs processed"></progress>
         <button type="button" id="cancel-scan" class="back">Stop scan</button>
+        <button type="button" id="export-batch" class="back" hidden>Export JSON</button>
         <div id="batch-rows"></div>
     </section>
     <script src="script.js"></script>

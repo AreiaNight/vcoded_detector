@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 import requests
 
+from export_results import export_results
+
 WORDLIST = Path(__file__).with_name("wordlist.txt")
 
 
@@ -44,6 +46,8 @@ def main(argv=None):
     source = parser.add_mutually_exclusive_group()
     source.add_argument("--url", help="A single URL to scan")
     source.add_argument("--urls-file", type=Path, help="File with one URL per line")
+    parser.add_argument("--export", type=Path, metavar="PATH",
+                        help="Also write a structured JSON report to PATH")
     args = parser.parse_args(argv)
     if args.target and (args.url or args.urls_file):
         parser.error("Use a positional URL, --url, or --urls-file, not a combination")
@@ -60,6 +64,7 @@ def main(argv=None):
         return 1
 
     records = []
+    exported = []
     failed = False
     for url in urls:
         try:
@@ -76,6 +81,7 @@ def main(argv=None):
             error = f"Could not analyze the page: {exc}"
         else:
             records.append({"url": url, **data} if batch else data)
+            exported.append({"url": url, **data})
             if batch:
                 print(
                     f"Scanned {url}: HTTP {data['status']}; "
@@ -85,8 +91,18 @@ def main(argv=None):
             continue
         failed = True
         print(f"Failed to scan {url}: {error}", file=sys.stderr, end="\n\n")
+        exported.append({"url": url, "error": error})
         if batch:
             records.append({"url": url, "error": error})
+
+    if args.export:
+        params = ({"urls_file": str(args.urls_file)} if batch else {"url": urls[0]})
+        try:
+            path = export_results(args.export, "web", exported, params)
+            print(f"Report exported to {path}", file=sys.stderr)
+        except OSError as error:
+            print(f"Could not write export file: {error}", file=sys.stderr)
+            failed = True
 
     # Preserve the dashboard's single-object JSON contract. Batch mode emits an array.
     if batch:

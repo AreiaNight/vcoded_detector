@@ -3,6 +3,45 @@ const input = document.getElementById("url");
 const submitButton = document.getElementById("submit");
 const statusText = document.getElementById("status");
 const resultsSection = document.getElementById("results");
+let lastManual = null;
+
+// Same structure as export_results.py (schema_version 1).
+function buildReport(scanType, records, parameters) {
+    const ok = records.filter(r => !r.error);
+    const bad = records.filter(r => r.error);
+    const signals = {};
+    for (const r of ok) for (const m of r.results) signals[m.word] = (signals[m.word] || 0) + m.count;
+    return {
+        schema_version: 1,
+        scan_type: scanType,
+        generated_at: new Date().toISOString().replace(/\.\d{3}Z$/, "+00:00"),
+        parameters,
+        summary: {
+            urls: records.length,
+            fetched: ok.length,
+            failed: bad.length,
+            total_matches: ok.reduce((sum, r) => sum + r.total, 0),
+            urls_with_matches: ok.filter(r => r.total > 0).length,
+            signals: Object.fromEntries(Object.entries(signals).sort((a, b) => b[1] - a[1])),
+        },
+        results: ok.map(r => ({ url: r.url, status: r.status, source: r.source, total: r.total, matches: r.results })),
+        errors: bad.map(r => ({ url: r.url, error: r.error })),
+    };
+}
+
+function downloadReport(scanType, records, parameters) {
+    const report = buildReport(scanType, records, parameters);
+    const blob = new Blob([JSON.stringify(report, null, 2) + "\n"], { type: "application/json" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `scan-${scanType}-${report.generated_at.slice(0, 19).replace(/:/g, "-")}.json`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 0);
+}
+
+document.getElementById("export-manual").addEventListener("click", () => {
+    if (lastManual) downloadReport("web", [{ url: lastManual.url, ...lastManual.data }], { url: lastManual.url });
+});
 
 form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -20,7 +59,9 @@ form.addEventListener("submit", async (event) => {
         if (!response.ok) {
             throw new Error(await response.text());
         }
-        showResults(await response.json());
+        const data = await response.json();
+        lastManual = { url: input.value.trim(), data };
+        showResults(data);
     } catch (error) {
         statusText.textContent = error.message;
         statusText.classList.add("error");
@@ -97,7 +138,11 @@ const batchRows = document.getElementById("batch-rows");
 const batchSummary = document.getElementById("batch-summary");
 const batchProgress = document.getElementById("batch-progress");
 const cancelButton = document.getElementById("cancel-scan");
+const exportBatchButton = document.getElementById("export-batch");
 let activeScan = null;
+let batchRecords = [];
+let batchParams = {};
+exportBatchButton.addEventListener("click", () => downloadReport("database", batchRecords, batchParams));
 let methodLoad = 0;
 
 function showScreen(screen) {
@@ -187,6 +232,9 @@ databaseForm.addEventListener("submit", async event => {
     methodSelect.disabled = true;
     document.getElementById("limit").disabled = true;
     batchRows.replaceChildren();
+    batchRecords = [];
+    batchParams = { cashout_method_id: Number(methodSelect.value), limit: Number(document.getElementById("limit").value) };
+    exportBatchButton.hidden = true;
     batchSection.hidden = false;
     cancelButton.hidden = false;
     batchProgress.removeAttribute("value");
@@ -197,9 +245,12 @@ databaseForm.addEventListener("submit", async event => {
         if (event.event === "started") {
             batchProgress.max = Math.max(event.urls, 1);
             batchProgress.value = 0;
+            batchParams.cashout_method = event.method;
+            batchParams.messages = event.messages;
             batchSummary.textContent = `${event.method}: ${event.messages} messages selected, ${event.urls} unique URLs found.`;
         } else if (event.event === "result") {
             appendBatchResult(event.data);
+            batchRecords.push(event.data);
             processed = event.completed;
             batchProgress.value = processed;
             batchSummary.textContent = `Scanned ${processed} of ${event.urls} URLs.`;
@@ -244,6 +295,7 @@ databaseForm.addEventListener("submit", async event => {
         methodSelect.disabled = false;
         document.getElementById("limit").disabled = false;
         cancelButton.hidden = true;
+        exportBatchButton.hidden = batchRecords.length === 0;
         if (!batchProgress.hasAttribute("value")) batchProgress.value = 0;
     }
 });
