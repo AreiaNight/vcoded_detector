@@ -42,6 +42,7 @@ def build_report(scan_type, records, parameters=None):
                 "source": r["source"],
                 "total": r["total"],
                 "matches": r["results"],
+                **({"assessment": r["assessment"]} if "assessment" in r else {}),
             }
             for r in successes
         ],

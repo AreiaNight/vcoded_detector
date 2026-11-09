@@ -18,9 +18,9 @@ case "$*" in
   *--list-methods*) printf '%s\n' '[{"id":4,"method":"Wire transfer"}]' ;;
   *database_scan.py*)
     printf '%s\n' '{"event":"started","messages":1,"urls":1,"method":"Wire transfer"}'
-    printf '%s\n' '{"event":"result","completed":1,"urls":1,"data":{"url":"https://example.com","status":200,"total":0,"results":[]}}'
+    printf '%s\n' '{"event":"result","completed":1,"urls":1,"data":{"url":"https://example.com","status":200,"total":0,"results":[],"assessment":{"score":0,"level":"Low"}}}'
     printf '%s\n' '{"event":"completed","messages":1,"urls":1,"fetched":1,"failed":0}' ;;
-  *) printf '%s\n' '{"status":200,"source":"view-source:https://example.com","total":0,"results":[]}' ;;
+  *) printf '%s\n' '{"status":200,"source":"view-source:https://example.com","total":0,"results":[],"assessment":{"score":0,"level":"Low"}}' ;;
 esac
 `
 	if err := os.WriteFile(path, []byte(script), 0700); err != nil {
@@ -33,7 +33,7 @@ func TestManualScanStillReturnsObject(t *testing.T) {
 	w := httptest.NewRecorder()
 	newMux().ServeHTTP(w, httptest.NewRequest("POST", "/api/analyze", strings.NewReader(`{"url":"https://example.com"}`)))
 	var data Response
-	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &data) != nil || data.Status != 200 {
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &data) != nil || data.Status != 200 || len(data.Assessment) == 0 {
 		t.Fatalf("unexpected response: %d %s", w.Code, w.Body)
 	}
 }
@@ -84,5 +84,27 @@ func TestDatabaseFailureReturnsActionableError(t *testing.T) {
 	newMux().ServeHTTP(w, httptest.NewRequest("POST", "/api/database-scan", strings.NewReader(`{"cashout_method_id":4,"limit":15}`)))
 	if w.Code != 502 || !strings.Contains(w.Body.String(), "COROBOMAIL_DSN") {
 		t.Fatalf("unexpected response: %d %s", w.Code, w.Body)
+	}
+}
+
+func TestPDFRejectsInvalidReports(t *testing.T) {
+	for _, body := range []string{`invalid`, `[]`, `{}`, `{"records":"not a list"}`} {
+		w := httptest.NewRecorder()
+		newMux().ServeHTTP(w, httptest.NewRequest("POST", "/api/export/pdf", strings.NewReader(body)))
+		if w.Code != 400 {
+			t.Fatalf("expected 400 for %s, got %d", body, w.Code)
+		}
+	}
+}
+func TestPDFDownloadHeaders(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "python")
+	if err := os.WriteFile(path, []byte("#!/bin/sh\nprintf '%%PDF-1.4\\nexample'\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PYTHON", path)
+	w := httptest.NewRecorder()
+	newMux().ServeHTTP(w, httptest.NewRequest("POST", "/api/export/pdf", strings.NewReader(`{"records":[]}`)))
+	if w.Code != 200 || w.Header().Get("Content-Type") != "application/pdf" || !strings.HasPrefix(w.Body.String(), "%PDF-") {
+		t.Fatalf("unexpected PDF response: %d %s", w.Code, w.Body)
 	}
 }

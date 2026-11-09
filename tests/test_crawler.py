@@ -18,7 +18,9 @@ class CrawlerTests(unittest.TestCase):
                 contextlib.redirect_stdout(io.StringIO()) as output:
             status = crawler.main(["https://example.com"])
         self.assertEqual(status, 0)
-        self.assertEqual(json.loads(output.getvalue()), {
+        result = json.loads(output.getvalue())
+        self.assertEqual(result.pop("assessment")["score"], 1)
+        self.assertEqual(result, {
             "status": 200, "source": "view-source:https://example.com", "total": 3,
             "results": [{"word": "signal", "count": 2}, {"word": "✨", "count": 1}],
         })

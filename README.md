@@ -238,3 +238,90 @@ Additional server tests (no database or network requests):
 ```sh
 go test dashboard.go dashboard_test.go
 ```
+
+
+## Executive assessments and PDF reports
+
+Both scan modes show a 0-100 **review-priority score**, interpretation, evidence,
+and recommended action. This experimental rule-based heuristic is not a probability
+of fraud or AI authorship and has not been calibrated on labeled examples. It scores
+page content only; extracted message bodies are not analyzed by this version.
+
+| Wordlist category | Maximum points |
+|---|---:|
+| Sensitive-data requests | 25 |
+| Payment or reward claims | 20 |
+| Urgency or pressure | 15 |
+| Identity-verification demands | 10 |
+| Source and template indicators | 10 |
+| Emoji indicators | 5 |
+
+The wordlist supplies up to 85 points. Two supplementary checks remain in code:
+repeated language (10) and unusual formatting (5). Scores 0-19 are Low, 20-49
+Moderate, and 50-100 High review priority. Scores at or above 50 are flagged.
+These thresholds are uncalibrated. Low scores do not establish safety.
+
+### Editing the wordlist
+
+`wordlist.txt` is shared by keyword counting and scoring. A category heading is:
+
+```text
+[Category name | category cap | text or source | points per distinct entry]
+```
+
+For example:
+
+```text
+[Sensitive-data requests | 25 | text | 25]
+enter your password
+send your verification code
+```
+
+Entries are literal, case-insensitive phrases. Add a line under the appropriate
+heading to include it in subsequent scans, without editing Python. Each distinct
+entry contributes its configured points, up to its group's cap. Repeating an entry
+never multiplies its score. Scores are capped at 100 if group caps are customized.
+Lines beginning with `#` are documentation. Existing `//` and HTML comment entries
+are literal signals and remain in the wordlist. Exact duplicate entries in a group
+are ignored. Headings and documentation never become keyword-count signals.
+
+`text` groups examine extracted page text and skip matches in sentences containing
+common safety-advice phrases such as "never" and "do not". `source` groups examine
+raw HTML too, including comments and scripts. Generic source tokens contribute
+2 points each up to 10; distinct emoji entries contribute 1 each up to 5. These
+small contributions acknowledge the original wordlist without treating generic
+terms or stylistic features as conclusive evidence. Explanations name the matched
+entries and their category contribution. JSON assessments include `wordlist_points`
+and `supplementary_points`.
+
+Static HTML parsing cannot reliably interpret CSS visibility or JavaScript-rendered
+content. Pages with fewer than 8 words or 40 characters and no wordlist matches are
+not scored. Limited-text pages with matches are labeled as relying on wordlist
+evidence. Unsupported formats and non-2xx responses remain unassessed.
+
+The database dashboard displays only 2xx fetched pages, ranked by score, alongside
+coverage totals. Failed requests and HTTP error pages remain in JSON diagnostics,
+but do not appear as executive findings. Coverage and partial-report labels prevent
+unavailable content or cancelled scans from being mistaken for completed assessments.
+
+**Export PDF report** downloads an executive summary with scores, evidence, actions,
+coverage, and the scoring methodology. It omits failed URL details. Existing JSON
+export remains available and includes the assessments and diagnostics.
+
+Set up the project Python environment once:
+
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+```
+
+The Go server prefers `.venv/bin/python` when present. `PYTHON` still overrides
+that choice; install the requirements in that environment if you set it. Database
+access continues to use `COROBOMAIL_DSN` from the server's terminal environment.
+
+For development tests, install `requirements-dev.txt` instead, then run:
+
+```sh
+.venv/bin/python -m unittest discover -s tests -v
+go test dashboard.go dashboard_test.go
+```
