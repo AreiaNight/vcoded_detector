@@ -5,14 +5,15 @@ from pathlib import Path
 import requests
 
 from export_results import export_results
+from scoring import assess
+from wordlist import load_wordlist
 
 WORDLIST = Path(__file__).with_name("wordlist.txt")
 
 
 def load_signals():
-    # dict.fromkeys drops repeated lines, so no signal is counted twice.
-    lines = WORDLIST.read_text(encoding="utf-8").splitlines()
-    return list(dict.fromkeys(line.strip().lower() for line in lines if line.strip()))
+    groups = load_wordlist(WORDLIST)
+    return list(dict.fromkeys(entry for group in groups for entry in group["entries"]))
 
 
 def analyze(url):
@@ -37,6 +38,8 @@ def analyze(url):
         "source": view_source,
         "total": sum(item["count"] for item in results),
         "results": results,
+        "assessment": assess(response.text, response.status_code,
+                             response.headers.get("content-type", "text/html")),
     }
 
 

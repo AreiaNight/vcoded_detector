@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -25,10 +26,11 @@ type Result struct {
 	Count int    `json:"count"`
 }
 type Response struct {
-	Status  int      `json:"status"`
-	Source  string   `json:"source"`
-	Total   int      `json:"total"`
-	Results []Result `json:"results"`
+	Status     int             `json:"status"`
+	Source     string          `json:"source"`
+	Total      int             `json:"total"`
+	Results    []Result        `json:"results"`
+	Assessment json.RawMessage `json:"assessment,omitempty"`
 }
 
 func newMux() *http.ServeMux {
@@ -37,6 +39,7 @@ func newMux() *http.ServeMux {
 	mux.HandleFunc("GET /styles.css", serveFile("styles.css"))
 	mux.HandleFunc("GET /script.js", serveFile("script.js"))
 	mux.HandleFunc("POST /api/analyze", analyzeAPI)
+	mux.HandleFunc("POST /api/export/pdf", exportPDFAPI)
 	mux.HandleFunc("GET /api/cashout-methods", cashoutMethodsAPI)
 	mux.HandleFunc("POST /api/database-scan", databaseScanAPI)
 	return mux
@@ -48,7 +51,11 @@ func main() {
 func pythonCommand(ctx context.Context, args ...string) *exec.Cmd {
 	python := os.Getenv("PYTHON")
 	if python == "" {
-		python = "python"
+		if _, err := os.Stat(".venv/bin/python"); err == nil {
+			python = ".venv/bin/python"
+		} else {
+			python = "python"
+		}
 	}
 	return exec.CommandContext(ctx, python, args...)
 }
@@ -205,4 +212,38 @@ func databaseScanAPI(w http.ResponseWriter, r *http.Request) {
 }
 func serveFile(name string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) { http.ServeFile(w, r, name) }
+}
+
+func exportPDFAPI(w http.ResponseWriter, r *http.Request) {
+	payload, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 32*1024*1024))
+	if err != nil || !json.Valid(payload) {
+		http.Error(w, "Invalid report or report exceeds 32 MB", http.StatusBadRequest)
+		return
+	}
+	var report struct {
+		Records []json.RawMessage `json:"records"`
+	}
+	if json.Unmarshal(payload, &report) != nil || report.Records == nil {
+		http.Error(w, "A report must contain a records list", http.StatusBadRequest)
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 90*time.Second)
+	defer cancel()
+	cmd := pythonCommand(ctx, "pdf_report.py")
+	cmd.Stdin = bytes.NewReader(payload)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	output, err := cmd.Output()
+	if err != nil {
+		http.Error(w, "PDF export unavailable. Check that requirements.txt is installed in the dashboard's Python environment.", http.StatusBadGateway)
+		return
+	}
+	if !bytes.HasPrefix(output, []byte("%PDF-")) {
+		http.Error(w, "Could not generate the PDF report", http.StatusBadGateway)
+		return
+	}
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", `attachment; filename="scan-executive-report.pdf"`)
+	w.Header().Set("Cache-Control", "no-store")
+	w.Write(output)
 }

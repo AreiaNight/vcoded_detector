@@ -1,3 +1,7 @@
+# Format: [Category | maximum points | text or source | points per distinct entry]
+# Entries are literal, case-insensitive phrases. Repetition does not multiply points.
+# Lines beginning with # are documentation; existing // and HTML comments remain signals.
+[Source and template indicators | 10 | source | 2]
 <!-- Fake Error Message -->
 // For now,
 just show the error
@@ -20,6 +24,7 @@ send_telegram_message
 
 new injection
 
+[Emoji indicators | 5 | text | 1]
 😀
 😃
 😄
@@ -716,3 +721,55 @@ new injection
 ☔️
 ☂️
 🌊
+
+# Content indicators: each category is capped even when multiple phrases match.
+[Sensitive-data requests | 25 | text | 25]
+enter your password
+share your password
+send your verification code
+provide your bank details
+confirm your credit card
+submit your passcode
+ingresa tu contraseña
+comparte tu contraseña
+envía tu código de verificación
+proporciona tus datos bancarios
+
+[Payment or reward claims | 20 | text | 20]
+send money
+pay a fee
+transfer bitcoin
+pay with a gift card
+using a gift card
+guaranteed returns
+guaranteed profits
+risk-free investment
+claim your prize
+envía dinero
+paga una comisión
+ganancias garantizadas
+inversión sin riesgo
+reclama tu premio
+tarjeta de regalo
+
+[Urgency or pressure | 15 | text | 15]
+urgent
+act now
+immediately
+last chance
+your account will be suspended
+account blocked
+urgente
+de inmediato
+última oportunidad
+cuenta suspendida
+cuenta bloqueada
+
+[Identity-verification demands | 10 | text | 10]
+verify your account
+verify your identity
+confirm your identity
+account verification required
+verifica tu cuenta
+verifica tu identidad
+confirma tu identidad
