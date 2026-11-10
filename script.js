@@ -25,12 +25,12 @@ function downloadReport(scanType, records, parameters) {
     downloadBlob(new Blob([JSON.stringify(report,null,2)+"\n"], {type:"application/json"}), `scan-${scanType}.json`);
 }
 function fetched(record) { return !record.error && record.status >= 200 && record.status < 300; }
-function assessment(record) {
-    return record.assessment || {score:null, level:"Not assessed", explanation:"No assessment is available for this page.",action:"Review the source manually if needed.",factors:[]};
+function assessment(record, profile = "scam") {
+    return record.assessment?.[profile] || {score:null,level:"Not assessed",explanation:"Run a new scan to obtain this separate assessment.",action:"Review the source manually if needed.",factors:[]};
 }
 function scoreLabel(a) { return Number.isFinite(a.score) ? `${a.score}/100` : "Not assessed"; }
 function setPriority(element, a) {
-    element.textContent = Number.isFinite(a.score) ? `${a.level} priority` : "Not assessed";
+    element.textContent = Number.isFinite(a.score) ? `${a.level} indicators` : "Not assessed";
     element.className = "priority " + (Number.isFinite(a.score) ? a.level.toLowerCase() : "");
 }
 function explainFactors(list, a) {
@@ -40,6 +40,22 @@ function explainFactors(list, a) {
         li.textContent = `${factor.name} (+${factor.points}): ${factor.evidence}`;
         list.append(li);
     }
+}
+function assessmentCard(record, profile) {
+    const a = assessment(record, profile);
+    const card = document.createElement("section"); card.className = "assessment-card " + (profile === "ai_template" ? "ai-template" : "scam");
+    const title = document.createElement("h3"); title.textContent = profile === "ai_template" ? "AI/template indicators" : "Scam indicators";
+    const badge = document.createElement("span"); setPriority(badge,a);
+    const score = document.createElement("strong"); score.className = "score-value"; score.textContent = scoreLabel(a);
+    const explanation = document.createElement("p"); explanation.className = "explanation"; explanation.textContent = a.explanation;
+    const action = document.createElement("p"); action.className = "recommendation"; action.textContent = a.action;
+    card.append(title,badge,score,explanation,action);
+    if(a.factors?.length) {
+        const details = document.createElement("details"), summary = document.createElement("summary"), list = document.createElement("ul");
+        summary.textContent = "Why this score?"; explainFactors(list,a); details.append(summary,list); card.append(details);
+    }
+    if(a.caveat) { const note=document.createElement("p");note.className="axis-note";note.textContent=a.caveat;card.append(note); }
+    return card;
 }
 async function exportPDF(button, scanType, records, parameters, complete = true) {
     const label = button.textContent; button.disabled = true; button.textContent = "Preparing PDF…";
@@ -68,11 +84,9 @@ form.addEventListener("submit", async event => {
         if(!response.ok) throw new Error("This page could not be fetched. No score is available.");
         const data = await response.json(); lastManual = {url,data};
         statusText.textContent = "";
-        const a = assessment(data);
         $("source").textContent = url;
-        $("manual-score").textContent = scoreLabel(a); setPriority($("manual-level"),a);
-        $("manual-explanation").textContent = a.explanation; $("manual-action").textContent = a.action;
-        explainFactors($("manual-factors"),a); $("pdf-manual").disabled = !fetched(data);
+        $("manual-assessments").replaceChildren(assessmentCard(data,"ai_template"),assessmentCard(data,"scam"));
+        $("pdf-manual").disabled = !fetched(data);
         resultsSection.hidden = false;
     } catch(error) {
         if(error.name !== "AbortError") {statusText.textContent = error.message; statusText.classList.add("error");}
@@ -105,28 +119,25 @@ async function loadMethods() {
     }
 }
 function renderBatchSummary() {
-    const pages = batchRecords.filter(fetched), scored = pages.filter(r=>Number.isFinite(assessment(r).score));
-    $("summary-messages").textContent = batchParams.messages ?? "—";
-    $("summary-fetched").textContent = pages.length;
-    $("summary-flagged").textContent = scored.filter(r=>assessment(r).score >= 50).length;
-    $("coverage").textContent = `${pages.length} of ${batchParams.urls ?? batchRecords.length} discovered pages fetched · ${scored.length} scored · ${pages.length-scored.length} with insufficient assessment coverage.`;
+    const pages=batchRecords.filter(fetched);
+    const scamScored=pages.filter(r=>Number.isFinite(assessment(r,"scam").score));
+    const aiScored=pages.filter(r=>Number.isFinite(assessment(r,"ai_template").score));
+    $("summary-messages").textContent=batchParams.messages ?? "—";
+    $("summary-fetched").textContent=pages.length;
+    $("summary-flagged").textContent=scamScored.filter(r=>assessment(r,"scam").score>=50).length;
+    $("summary-ai-high").textContent=aiScored.filter(r=>assessment(r,"ai_template").score>=50).length;
+    $("coverage").textContent=`${pages.length} of ${batchParams.urls ?? batchRecords.length} discovered pages fetched · ${scamScored.length} scam assessments · ${aiScored.length} AI/template assessments.`;
 }
 function appendBatchResult(data) {
     if(!fetched(data)) return;
-    const a = assessment(data), article = document.createElement("article"); article.className = "scan-result";
-    article.dataset.score = Number.isFinite(a.score) ? a.score : -1;
-    const header = document.createElement("div"); header.className = "result-heading";
-    const title = document.createElement("h3"); title.textContent = data.url;
-    const badge = document.createElement("span"); setPriority(badge,a); header.append(title,badge);
-    const score = document.createElement("p"); score.className = "scan-score"; score.textContent = scoreLabel(a);
-    const explanation = document.createElement("p"); explanation.className = "explanation"; explanation.textContent = a.explanation;
-    const action = document.createElement("p"); action.className = "recommendation"; action.textContent = a.action;
-    article.append(header,score,explanation,action);
-    if(a.factors?.length) {
-        const details = document.createElement("details"), summary = document.createElement("summary"), list = document.createElement("ul");
-        summary.textContent = "Why this score?"; explainFactors(list,a); details.append(summary,list); article.append(details);
-    }
-    const before = [...batchRows.children].find(item=>Number(item.dataset.score) < Number(article.dataset.score));
+    const article=document.createElement("article");article.className="scan-result";
+    article.dataset.score=Number.isFinite(assessment(data,"scam").score)?assessment(data,"scam").score:-1;
+    article.dataset.aiScore=Number.isFinite(assessment(data,"ai_template").score)?assessment(data,"ai_template").score:-1;
+    const title=document.createElement("h3");title.textContent=data.url;
+    const grid=document.createElement("div");grid.className="assessment-grid";
+    grid.append(assessmentCard(data,"ai_template"),assessmentCard(data,"scam"));article.append(title,grid);
+    const before=[...batchRows.children].find(item=>Number(item.dataset.score)<Number(article.dataset.score) ||
+        (Number(item.dataset.score)===Number(article.dataset.score) && Number(item.dataset.aiScore)<Number(article.dataset.aiScore)));
     batchRows.insertBefore(article,before || null);
 }
 $("cancel-scan").addEventListener("click",()=>activeScan?.abort());
@@ -149,7 +160,7 @@ databaseForm.addEventListener("submit", async event => {
             $("batch-summary").textContent = `Reviewing ${item.completed} of ${item.urls} discovered pages.`;
         } else if(item.event === "completed") {
             batchComplete = true; batchProgress.value = batchProgress.max;
-            $("batch-summary").textContent = `${batchParams.cashout_method} · Scan complete. Fetched pages are listed by review priority.`;
+            $("batch-summary").textContent = `${batchParams.cashout_method} · Scan complete. Fetched pages are ranked by scam indicators, then AI/template indicators.`;
         } else if(item.event === "error") throw new Error("Scan interrupted. Available findings are shown in this partial assessment.");
         renderBatchSummary();
     };

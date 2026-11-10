@@ -10,6 +10,7 @@ import requests
 from crawler import analyze
 from export_results import export_results
 from extract_urls import export_urls
+from tls_config import configure_https
 
 MAX_MESSAGES = 1000
 
@@ -83,6 +84,7 @@ def main(argv=None):
         parser.error(f"Provide --cashout-method-id and --limit between 1 and {MAX_MESSAGES}")
     connection = None
     try:
+        configure_https()
         connection = connect_database()
         if args.list_methods:
             print(json.dumps(list_methods(connection)))

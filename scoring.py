@@ -4,9 +4,9 @@ from collections import Counter
 from html.parser import HTMLParser
 from wordlist import load_wordlist, contains
 
-VERSION = "wordlist-review-v2"
-CAVEAT = "Experimental review priority, not a probability of fraud or AI authorship. Page text and source only; message bodies are not scored."
-BANDS = "0-19 Low; 20-49 Moderate; 50-100 High. Scores of 50 or more are flagged for review."
+VERSION = "dual-wordlist-v3"
+CAVEAT = "Independent heuristic scores, not probabilities of fraud or AI authorship. AI/platform traces do not imply fraud. Page text and source only; message bodies are not scored."
+BANDS = "Each score: 0-19 Low; 20-49 Moderate; 50-100 High indicator presence. Only high scam indicators trigger review flags."
 
 
 class VisibleText(HTMLParser):
@@ -14,8 +14,12 @@ class VisibleText(HTMLParser):
         super().__init__(convert_charrefs=True)
         self.hidden = []
         self.parts = []
+        self.generators = []
 
     def handle_starttag(self, tag, attrs):
+        attributes = dict(attrs)
+        if tag == "meta" and attributes.get("name", "").casefold() == "generator":
+            self.generators.append(attributes.get("content", ""))
         if tag in {"script", "style", "head", "svg", "noscript"}:
             self.hidden.append(tag)
         if tag in {"p", "div", "br", "li", "h1", "h2", "h3", "section"}:
@@ -32,10 +36,42 @@ class VisibleText(HTMLParser):
             self.parts.append(data)
 
 
+PROFILES = ("ai_template", "scam")
+
+
+def summarize(profile, factors, enough_text, unavailable=None):
+    caveat = ("Builder traces and AI-related claims do not establish AI authorship or fraud."
+              if profile == "ai_template" else "Warning phrases require contextual review; this is not a fraud probability or a safety verdict.")
+    if unavailable or (not enough_text and not factors):
+        return {"score": None, "level": "Not assessed", "flagged": False,
+                "explanation": unavailable or "Too little readable text or relevant wordlist evidence was available for this assessment.",
+                "action": "Review the source manually if needed.", "factors": [], "caveat": caveat,
+                "wordlist_points": 0, "supplementary_points": 0}
+    score = min(100, sum(f["points"] for f in factors))
+    level = "High" if score >= 50 else "Moderate" if score >= 20 else "Low"
+    explanation = ("Signals detected: " + "; ".join(f["name"].lower() for f in factors) + "." if factors else
+                   "No configured " + ("AI/template" if profile == "ai_template" else "scam") + " indicators were found. This is not proof of authorship or safety.")
+    if not enough_text:
+        explanation += " Limited readable text; assessment relies on relevant wordlist evidence."
+    action = ("Treat these as platform/style clues and AI-related claims; verify authorship separately."
+              if profile == "ai_template" else {
+                  "High": "Prioritize human review; independently verify the identity and requested action.",
+                  "Moderate": "Review the request and verify it through an independent channel.",
+                  "Low": "Consider source and context; a low score does not establish safety."}[level])
+    return {"score": score, "level": level, "flagged": profile == "scam" and score >= 50,
+            "explanation": explanation, "action": action, "factors": factors, "caveat": caveat,
+            "wordlist_points": sum(f["points"] for f in factors if f.get("origin") == "wordlist"),
+            "supplementary_points": sum(f["points"] for f in factors if f.get("origin") != "wordlist")}
+
+
+def package(profiles):
+    # Deprecated top-level fields alias the scam assessment for older clients.
+    # There is deliberately no combined AI/scam score.
+    return {"version": VERSION, **profiles["scam"], "caveat": CAVEAT, **profiles}
+
+
 def unassessed(reason):
-    return {"version": VERSION, "score": None, "level": "Not assessed", "flagged": False,
-            "explanation": reason, "action": "Review the source manually if needed.",
-            "factors": [], "caveat": CAVEAT}
+    return package({profile: summarize(profile, [], False, reason) for profile in PROFILES})
 
 
 def assess(html, status=200, content_type="text/html", wordlist_path=None):
@@ -43,57 +79,41 @@ def assess(html, status=200, content_type="text/html", wordlist_path=None):
         return unassessed("The page did not return a successful HTTP response; its content was not scored.")
     if not any(kind in content_type.lower() for kind in ("text/html", "text/plain", "application/xhtml")):
         return unassessed("This content format is not supported for text assessment.")
+    metadata = ""
     if "text/plain" in content_type.lower():
         text = html
     else:
         parser = VisibleText()
         parser.feed(html)
         text = "".join(parser.parts)
+        metadata = " ".join(parser.generators)
     text = re.sub(r"[^\S\n]+", " ", text).strip()
     enough_text = len(re.findall(r"\w+", text)) >= 8 and len(text) >= 40
     sentences = [s.strip() for s in re.split(r"[.!?\n]+", text) if s.strip()]
-    factors = []
-
-    def add(name, points, evidence):
-        factors.append({"name": name, "points": points, "evidence": evidence[:180]})
-
+    factors = {profile: [] for profile in PROFILES}
     for group in load_wordlist(wordlist_path):
+        profile = group["profile"]
         entries = []
         for entry in group["entries"]:
-            if group["scope"] == "source":
-                found = contains(html, entry)
+            if group["scope"] in {"source", "metadata"}:
+                found = contains(html if group["scope"] == "source" else metadata, entry)
             else:
-                found = any(contains(sentence, entry) and not re.search(
-                    r"\b(never|do not|don't|avoid|nunca|jamás|no compartas|no envíes|no envies)\b",
-                    sentence, re.I) for sentence in sentences)
+                found = any(contains(sentence, entry) and (profile != "scam" or not re.search(
+                    r"\b(never|do not|don't|avoid|nunca|jamás|no compartas|no envíes|no envies)\b", sentence, re.I)) for sentence in sentences)
             if found:
                 entries.append(entry)
         if entries:
-            points = min(group["cap"], len(entries) * group["points"])
-            add(group["name"], points, "Wordlist matches: " + "; ".join(entries))
-            factors[-1]["entries"] = entries
-            factors[-1]["origin"] = "wordlist"
-            factors[-1]["scope"] = group["scope"]
-    if not enough_text and not factors:
-        return unassessed("Too little readable text or wordlist evidence was available for a meaningful assessment.")
+            factors[profile].append({"name": group["name"], "points": min(group["cap"], len(entries)*group["points"]),
+                                     "evidence": ("Generator metadata: " + metadata if group["scope"] == "metadata" else "Wordlist matches: " + "; ".join(entries))[:180],
+                                     "entries": entries, "origin": "wordlist", "scope": group["scope"]})
     counts = Counter(re.sub(r"\s+", " ", s.lower()) for s in sentences if len(s) >= 35)
     repeated = next((s for s, count in counts.items() if count >= 3), None)
     if repeated:
-        add("Repeated language", 10, repeated)
+        factors["ai_template"].append({"name": "Repeated language", "points": 10, "evidence": repeated[:180],
+            "origin": "supplementary", "note": "Duplicate responsive layouts can also cause repetition."})
     words = re.findall(r"\b[^\W\d_]+\b", text)
     capitals = sum(len(w) > 2 and w.isupper() for w in words)
     if re.search(r"[!?]{3,}", text) or (len(words) >= 20 and capitals / len(words) > 0.35):
-        add("Unusual formatting", 5, "Repeated punctuation or a high proportion of capitalized words.")
-    score = min(100, sum(f["points"] for f in factors))
-    level = "High" if score >= 50 else "Moderate" if score >= 20 else "Low"
-    explanation = ("Signals detected: " + "; ".join(f["name"].lower() for f in factors) + "."
-                   if factors else "No configured warning signals were found in the readable page text. This does not establish that the page is safe.")
-    if not enough_text:
-        explanation += " Limited readable text; assessment relies on wordlist evidence."
-    action = {"High": "Prioritize human review and verify the claimed identity and requested action.",
-              "Moderate": "Review the request and verify it through an independent channel.",
-              "Low": "No automatic escalation; consider source and context before acting."}[level]
-    return {"version": VERSION, "score": score, "level": level, "flagged": score >= 50,
-            "explanation": explanation, "action": action, "factors": factors, "caveat": CAVEAT,
-            "wordlist_points": sum(f["points"] for f in factors if f.get("origin") == "wordlist"),
-            "supplementary_points": sum(f["points"] for f in factors if f.get("origin") != "wordlist")}
+        factors["ai_template"].append({"name": "Unusual formatting", "points": 5,
+            "evidence": "Repeated punctuation or a high proportion of capitalized words.", "origin": "supplementary"})
+    return package({profile: summarize(profile, factors[profile], enough_text) for profile in PROFILES})

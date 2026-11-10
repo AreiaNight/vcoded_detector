@@ -43,7 +43,7 @@
 
 ## 𝐑𝐞𝐪𝐮𝐢𝐫𝐞𝐦𝐞𝐧𝐭𝐬
 
-- Python 3.9 or later
+- Python 3.10 or later
 - Go 1.22 or later
 - Python dependencies listed in `requirements.txt`
 
@@ -240,88 +240,110 @@ go test dashboard.go dashboard_test.go
 ```
 
 
-## Executive assessments and PDF reports
+## Separate AI/template and scam assessments
 
-Both scan modes show a 0-100 **review-priority score**, interpretation, evidence,
-and recommended action. This experimental rule-based heuristic is not a probability
-of fraud or AI authorship and has not been calibrated on labeled examples. It scores
-page content only; extracted message bodies are not analyzed by this version.
+Both scan modes show two independent 0-100 heuristic assessments, each with its
+own level, explanation, matched entries, and recommended action. Neither score
+is a probability. Platform traces or AI-service claims do not establish AI
+content authorship or fraud. This version assesses page text/source, not message bodies.
 
-| Wordlist category | Maximum points |
+| AI/template wordlist categories | Cap |
 |---|---:|
-| Sensitive-data requests | 25 |
-| Payment or reward claims | 20 |
-| Urgency or pressure | 15 |
-| Identity-verification demands | 10 |
-| Source and template indicators | 10 |
+| Source/template markers | 10 |
 | Emoji indicators | 5 |
+| Builder/platform generator metadata | 30 |
+| AI-related service claims | 30 |
+| Explicit AI-generation claims | 10 |
 
-The wordlist supplies up to 85 points. Two supplementary checks remain in code:
-repeated language (10) and unusual formatting (5). Scores 0-19 are Low, 20-49
-Moderate, and 50-100 High review priority. Scores at or above 50 are flagged.
-These thresholds are uncalibrated. Low scores do not establish safety.
+AI/template supplementary checks add up to 10 points for repeated language and 5
+for unusual formatting. Responsive HTML duplication can cause repetition and is
+not proof of AI authorship. Builder metadata identifies a platform; AI-service
+claims identify what a page says about its service.
+
+| Scam wordlist categories | Cap |
+|---|---:|
+| Sensitive-data requests | 35 |
+| Payment/reward claims | 30 |
+| Urgency/pressure | 20 |
+| Identity-verification demands | 15 |
+
+Scam scores receive no AI/template, repetition, or formatting points. Each score
+uses 0-19 Low, 20-49 Moderate, 50-100 High indicator presence; only high scam scores
+trigger review flags. Low scores do not establish safety. Weights and thresholds
+are experimental and should be evaluated against labeled examples.
 
 ### Editing the wordlist
 
-`wordlist.txt` is shared by keyword counting and scoring. A category heading is:
-
 ```text
-[Category name | category cap | text or source | points per distinct entry]
+[Category | cap | text/source/metadata | points per distinct entry | ai_template/scam]
 ```
 
 For example:
 
 ```text
-[Sensitive-data requests | 25 | text | 25]
+[AI-related service claims | 30 | text | 10 | ai_template]
+ai-powered
+our ai
+
+[Sensitive-data requests | 35 | text | 35 | scam]
 enter your password
-send your verification code
 ```
 
-Entries are literal, case-insensitive phrases. Add a line under the appropriate
-heading to include it in subsequent scans, without editing Python. Each distinct
-entry contributes its configured points, up to its group's cap. Repeating an entry
-never multiplies its score. Scores are capped at 100 if group caps are customized.
-Lines beginning with `#` are documentation. Existing `//` and HTML comment entries
-are literal signals and remain in the wordlist. Exact duplicate entries in a group
-are ignored. Headings and documentation never become keyword-count signals.
+Entries are literal, case-insensitive phrases, with word boundaries for words.
+Repeated occurrences never multiply points. Each group is capped; each independent
+score is capped at 100. `#` lines are documentation, while existing `//` and HTML
+comment entries remain literal signals. Duplicate entries within a group are ignored.
 
-`text` groups examine extracted page text and skip matches in sentences containing
-common safety-advice phrases such as "never" and "do not". `source` groups examine
-raw HTML too, including comments and scripts. Generic source tokens contribute
-2 points each up to 10; distinct emoji entries contribute 1 each up to 5. These
-small contributions acknowledge the original wordlist without treating generic
-terms or stylistic features as conclusive evidence. Explanations name the matched
-entries and their category contribution. JSON assessments include `wordlist_points`
-and `supplementary_points`.
+`text` examines extracted readable text; `source` also examines raw HTML/scripts;
+`metadata` examines only `<meta name="generator" content="...">`. A casual mention
+of Framer or another platform in body text does not earn generator-metadata points.
+Text-based scam matches in common safety-advice sentences are suppressed.
 
-Static HTML parsing cannot reliably interpret CSS visibility or JavaScript-rendered
-content. Pages with fewer than 8 words or 40 characters and no wordlist matches are
-not scored. Limited-text pages with matches are labeled as relying on wordlist
-evidence. Unsupported formats and non-2xx responses remain unassessed.
+Existing four-field headers remain valid: Source/template and Emoji categories
+map to AI/template; other groups default to scam. Use the explicit fifth field
+for all new groups so their purpose is clear. Legacy ungrouped entries default
+to AI/template source markers (2 points each, capped at 10).
 
-The database dashboard displays only 2xx fetched pages, ranked by score, alongside
-coverage totals. Failed requests and HTTP error pages remain in JSON diagnostics,
-but do not appear as executive findings. Coverage and partial-report labels prevent
-unavailable content or cancelled scans from being mistaken for completed assessments.
+### Results and exports
 
-**Export PDF report** downloads an executive summary with scores, evidence, actions,
-coverage, and the scoring methodology. It omits failed URL details. Existing JSON
-export remains available and includes the assessments and diagnostics.
+The database view lists fetched 2xx pages, sorted by scam score first and then
+AI/template score. It summarizes high scam indicators separately from high
+AI/template indicators. Per-URL failures remain in JSON diagnostics, while
+coverage and partial-scan labels stay visible. Unavailable/unsupported pages
+have no scores. With fewer than 8 words or 40 characters, each assessment is
+independently marked Not assessed unless its own wordlist supplies evidence.
 
-Set up the project Python environment once:
+JSON records include `assessment.ai_template` and `assessment.scam`, each with
+`score`, `level`, `flagged`, `factors`, `wordlist_points`, and `supplementary_points`.
+The model version is `dual-wordlist-v3`. Deprecated top-level assessment fields
+alias **scam only** for older clients; no combined score is calculated. Older
+combined reports are not relabeled as separate assessments; run a new scan.
+
+PDF reports include both assessments, matched entries, recommendations, coverage,
+and separate methodologies. Failed URL details are omitted. The dashboard's
+PDF and JSON export buttons share a common style.
+
+Set up the environment with:
 
 ```sh
 python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
-```
-
-The Go server prefers `.venv/bin/python` when present. `PYTHON` still overrides
-that choice; install the requirements in that environment if you set it. Database
-access continues to use `COROBOMAIL_DSN` from the server's terminal environment.
-
-For development tests, install `requirements-dev.txt` instead, then run:
-
-```sh
+.venv/bin/python -m pip install -r requirements-dev.txt
 .venv/bin/python -m unittest discover -s tests -v
 go test dashboard.go dashboard_test.go
 ```
+
+Use `requirements.txt` for runtime-only dependencies. The server prefers the
+project `.venv/bin/python` unless `PYTHON` overrides it. Database configuration
+continues to come from `COROBOMAIL_DSN` in the server environment.
+
+### HTTPS certificate trust
+
+The CLI and dashboard workers configure native system certificate trust at startup
+using `truststore` (Python 3.10+). HTTPS certificate and hostname verification stay
+enabled. This lets the crawler use the certificates managed by macOS, Windows,
+or the Linux system instead of relying only on a separate bundled CA list.
+`configure_https()` runs at application entry points, not when another program
+imports the crawler module.
+
+After updating dependencies, restart the Go dashboard. If `PYTHON` is set, install
+requirements in that interpreter; otherwise the server prefers `.venv/bin/python`.

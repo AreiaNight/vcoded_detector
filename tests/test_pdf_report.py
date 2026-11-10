@@ -20,7 +20,7 @@ class PDFReportTests(unittest.TestCase):
         data=render_pdf({'scan_type':'database','records':self.records(),'parameters':{'cashout_method':'Wire transfer','messages':2,'urls':4,'limit':15}})
         self.assertTrue(data.startswith(b'%PDF-'))
         text='\n'.join(page.extract_text() for page in PdfReader(io.BytesIO(data)).pages)
-        for token in ['75/100','0/100','Sensitive-data requests','not a probability','Wire transfer']:
+        for token in ['100/100','0/100','Sensitive-data requests','not probabilities','Wire transfer','AI/template indicators','Scam indicators']:
             self.assertIn(token,text)
         self.assertNotIn('SECRET_RAW_ERROR',text)
         self.assertNotIn('unavailable.example',text)
@@ -35,3 +35,18 @@ class PDFReportTests(unittest.TestCase):
         records=[{**r,'url':'https://example.test/'+('longpath'*100)+'?<x>&name=José'} for r in records]
         data=render_pdf({'records':records})
         self.assertGreater(len(PdfReader(io.BytesIO(data)).pages),1)
+
+    def test_report_keeps_high_ai_indicators_separate_from_scam_flags(self):
+        page='<meta name="generator" content="Framer">'+LOW+'<p>Our AI offers AI-powered assistance as a content ghostwriter.</p>'
+        record={'url':'https://ai-service.example/','status':200,'assessment':assess(page)}
+        report=executive_report({'records':[record]})
+        self.assertEqual(report['flagged'],0)
+        self.assertEqual(report['ai_high'],1)
+        text='\n'.join(page.extract_text() for page in PdfReader(io.BytesIO(render_pdf({'records':[record]}))).pages)
+        self.assertIn('AI/template indicators: 60/100',text)
+        self.assertIn('Scam indicators: 0/100',text)
+    def test_old_combined_report_is_not_mislabeled_as_separate_assessment(self):
+        old={'url':'https://legacy.example/','status':200,'assessment':{'version':'wordlist-review-v2','score':75,'level':'High'}}
+        report=executive_report({'records':[old]})
+        self.assertEqual(report['assessed'],0)
+        self.assertEqual(report['flagged'],0)

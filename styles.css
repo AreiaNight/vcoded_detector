@@ -395,3 +395,17 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--emerald); 
 
 .report-button:hover:enabled { filter: brightness(1.08); }
 .report-button:focus-visible { outline: 2px solid var(--emerald); outline-offset: 3px; }
+
+.assessment-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; margin: 18px 0; }
+.assessment-card { min-width: 0; padding: 18px; border: 1px solid var(--line); border-radius: 12px; background: rgba(6,20,15,.45); }
+.assessment-card h3 { font-size: 16px; font-weight: 500; margin: 0 0 12px; }
+.assessment-card .score-value { font-size: 32px; margin: 14px 0 10px; }
+.assessment-card p { font-size: 13px; line-height: 1.65; }
+.assessment-card ul { padding-left: 18px; font-size: 12px; line-height: 1.7; }
+.assessment-card summary { font-size: 13px; cursor: pointer; color: var(--emerald); }
+.assessment-card .axis-note { color: var(--muted); font-size: 11px; margin-top: 14px; }
+.ai-template .priority.high { color: #badbff; background: rgba(98,165,242,.12); }
+.dual-summary { grid-template-columns: repeat(4,minmax(0,1fr)); }
+.dual-summary .metrica { padding: 12px 10px; }
+.dual-summary .metrica span { font-size: 12px; }
+@media(max-width:600px) { .assessment-grid { grid-template-columns: 1fr; } .dual-summary { grid-template-columns: repeat(2,minmax(0,1fr)); } .dual-summary .metrica:last-child { grid-column: auto; } }

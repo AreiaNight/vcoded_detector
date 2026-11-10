@@ -1,7 +1,7 @@
-# Format: [Category | maximum points | text or source | points per distinct entry]
+# Format: [Category | maximum points | text/source/metadata | points per distinct entry | ai_template/scam]
 # Entries are literal, case-insensitive phrases. Repetition does not multiply points.
 # Lines beginning with # are documentation; existing // and HTML comments remain signals.
-[Source and template indicators | 10 | source | 2]
+[Source and template indicators | 10 | source | 2 | ai_template]
 <!-- Fake Error Message -->
 // For now,
 just show the error
@@ -24,7 +24,7 @@ send_telegram_message
 
 new injection
 
-[Emoji indicators | 5 | text | 1]
+[Emoji indicators | 5 | text | 1 | ai_template]
 😀
 😃
 😄
@@ -723,7 +723,7 @@ new injection
 🌊
 
 # Content indicators: each category is capped even when multiple phrases match.
-[Sensitive-data requests | 25 | text | 25]
+[Sensitive-data requests | 35 | text | 35 | scam]
 enter your password
 share your password
 send your verification code
@@ -735,7 +735,7 @@ comparte tu contraseña
 envía tu código de verificación
 proporciona tus datos bancarios
 
-[Payment or reward claims | 20 | text | 20]
+[Payment or reward claims | 30 | text | 30 | scam]
 send money
 pay a fee
 transfer bitcoin
@@ -752,7 +752,7 @@ inversión sin riesgo
 reclama tu premio
 tarjeta de regalo
 
-[Urgency or pressure | 15 | text | 15]
+[Urgency or pressure | 20 | text | 20 | scam]
 urgent
 act now
 immediately
@@ -765,7 +765,7 @@ de inmediato
 cuenta suspendida
 cuenta bloqueada
 
-[Identity-verification demands | 10 | text | 10]
+[Identity-verification demands | 15 | text | 15 | scam]
 verify your account
 verify your identity
 confirm your identity
@@ -773,3 +773,26 @@ account verification required
 verifica tu cuenta
 verifica tu identidad
 confirma tu identidad
+
+# These identify platform traces and AI-related claims, not fraud or AI authorship.
+[Builder/platform metadata | 30 | metadata | 30 | ai_template]
+framer
+webflow
+wix
+squarespace
+
+[AI-related service claims | 30 | text | 10 | ai_template]
+ai-powered
+our ai
+ai writing
+ai content
+content ghostwriter
+inteligencia artificial
+asistente de ia
+
+[Explicit AI-generation claims | 10 | text | 10 | ai_template]
+generated with ai
+created with ai
+ai-generated
+generado con ia
+creado con ia

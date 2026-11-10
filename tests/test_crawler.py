@@ -19,7 +19,9 @@ class CrawlerTests(unittest.TestCase):
             status = crawler.main(["https://example.com"])
         self.assertEqual(status, 0)
         result = json.loads(output.getvalue())
-        self.assertEqual(result.pop("assessment")["score"], 1)
+        assessment = result.pop("assessment")
+        self.assertEqual(assessment["ai_template"]["score"], 1)
+        self.assertIsNone(assessment["scam"]["score"])
         self.assertEqual(result, {
             "status": 200, "source": "view-source:https://example.com", "total": 3,
             "results": [{"word": "signal", "count": 2}, {"word": "✨", "count": 1}],
