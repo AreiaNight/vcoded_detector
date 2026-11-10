@@ -108,3 +108,19 @@ func TestPDFDownloadHeaders(t *testing.T) {
 		t.Fatalf("unexpected PDF response: %d %s", w.Code, w.Body)
 	}
 }
+
+func TestDashboardAssetsAreNotCached(t *testing.T) {
+	for _, path := range []string{"/", "/script.js?v=dual-assessments-3", "/styles.css?v=dual-assessments-3"} {
+		w := httptest.NewRecorder()
+		newMux().ServeHTTP(w, httptest.NewRequest("GET", path, nil))
+		if w.Code != 200 {
+			t.Fatalf("%s returned %d", path, w.Code)
+		}
+		if w.Header().Get("Cache-Control") != "no-store" {
+			t.Fatalf("%s lacks no-store", path)
+		}
+		if path == "/" && !strings.Contains(w.Body.String(), "script.js?v=dual-assessments-3") {
+			t.Fatal("HTML must reference current versioned JavaScript")
+		}
+	}
+}

@@ -7,6 +7,7 @@ import requests
 from export_results import export_results
 from scoring import assess
 from wordlist import load_wordlist
+from tls_config import configure_https
 
 WORDLIST = Path(__file__).with_name("wordlist.txt")
 
@@ -56,6 +57,11 @@ def main(argv=None):
         parser.error("Use a positional URL, --url, or --urls-file, not a combination")
     if not (args.target or args.url or args.urls_file):
         parser.error("Provide a URL or --urls-file")
+
+    try:
+        configure_https()
+    except ImportError:
+        parser.exit(1, "Install requirements.txt in this Python environment (Python 3.10+ required).\n")
 
     batch = args.urls_file is not None
     try:

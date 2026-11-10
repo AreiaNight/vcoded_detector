@@ -211,7 +211,11 @@ func databaseScanAPI(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func serveFile(name string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) { http.ServeFile(w, r, name) }
+	return func(w http.ResponseWriter, r *http.Request) {
+		// HTML, JavaScript and CSS must stay in sync during local updates.
+		w.Header().Set("Cache-Control", "no-store")
+		http.ServeFile(w, r, name)
+	}
 }
 
 func exportPDFAPI(w http.ResponseWriter, r *http.Request) {

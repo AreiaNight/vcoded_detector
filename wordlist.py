@@ -13,17 +13,18 @@ def load_wordlist(path=None):
             continue
         if line.startswith("[") and line.endswith("]"):
             parts = [part.strip() for part in line[1:-1].split("|")]
-            if len(parts) != 4:
+            if len(parts) not in {4, 5}:
                 raise ValueError(f"Invalid wordlist group on line {number}")
-            name, cap, scope, points = parts
+            name, cap, scope, points = parts[:4]
+            profile = parts[4] if len(parts) == 5 else ("ai_template" if name in {"Source and template indicators", "Emoji indicators"} else "scam")
             cap, points = int(cap), int(points)
-            if not name or not 1 <= points <= cap <= 100 or scope not in {"text", "source"}:
+            if not name or not 1 <= points <= cap <= 100 or scope not in {"text", "source", "metadata"} or profile not in {"ai_template", "scam"}:
                 raise ValueError(f"Invalid wordlist settings on line {number}")
-            current = {"name": name, "cap": cap, "scope": scope, "points": points, "entries": []}
+            current = {"name": name, "cap": cap, "scope": scope, "points": points, "profile": profile, "entries": []}
             groups.append(current)
         else:
             if current is None:
-                current = {"name": "Wordlist indicators", "cap": 10, "scope": "source", "points": 2, "entries": []}
+                current = {"name": "Wordlist indicators", "cap": 10, "scope": "source", "points": 2, "profile": "ai_template", "entries": []}
                 groups.append(current)
             entry = line.casefold()
             if entry not in current["entries"]:

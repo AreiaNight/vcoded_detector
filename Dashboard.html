@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Vibe code scan</title>
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css?v=dual-assessments-3">
 </head>
 <body>
     <main id="home" class="card home-card">
@@ -46,31 +46,30 @@
     <p id="status" class="estado" role="status"></p>
 
     <section id="results" class="resultados" aria-labelledby="results-title" hidden>
-        <header class="resultados-head"><h2 id="results-title">Executive assessment</h2><p id="source" class="fuente"></p></header>
-        <div class="score-panel"><div><span class="help">Review-priority score</span><strong id="manual-score" class="score-value">—</strong></div><span id="manual-level" class="priority"></span></div>
-        <p id="manual-explanation"></p><p id="manual-action" class="recommendation"></p>
-        <ul id="manual-factors" class="factor-list"></ul>
-        <p class="assessment-note">Experimental review priority, not a probability of fraud or AI authorship. Page text and source only; message bodies are not scored.</p>
-        <p class="help">0–19 Low · 20–49 Moderate · 50–100 High. High scores are flagged for review.</p>
+        <header class="resultados-head"><h2 id="results-title">Page assessments</h2><p id="source" class="fuente"></p></header>
+        <div id="manual-assessments" class="assessment-grid"></div>
+        <p class="assessment-note">Independent heuristic scores, not probabilities of fraud or AI authorship. AI/platform traces do not imply fraud. Page text and source only; message bodies are not scored.</p>
+        <p class="help">Each score: 0–19 Low · 20–49 Moderate · 50–100 High indicator presence. Only high scam indicators trigger review flags.</p>
         <div class="report-actions"><button type="button" id="pdf-manual" class="report-button">Export PDF report</button><button type="button" id="export-manual" class="report-button">Export JSON</button></div>
     </section>
     <section id="batch-results" class="resultados" aria-labelledby="batch-title" hidden>
         <header class="resultados-head"><h2 id="batch-title">Scan summary</h2></header>
         <p id="batch-summary" class="help" role="status"></p>
-        <div class="resumen">
+        <div class="resumen dual-summary">
             <div class="metrica"><span>Messages selected</span><strong id="summary-messages">—</strong></div>
             <div class="metrica"><span>Pages fetched</span><strong id="summary-fetched">0</strong></div>
-            <div class="metrica"><span>Flagged for review</span><strong id="summary-flagged">0</strong></div>
+            <div class="metrica"><span>High scam indicators</span><strong id="summary-flagged">0</strong></div>
+            <div class="metrica"><span>High AI/template indicators</span><strong id="summary-ai-high">0</strong></div>
         </div>
         <p id="coverage" class="help"></p>
         <progress id="batch-progress" max="1" value="0" aria-label="URLs processed"></progress>
         <button type="button" id="cancel-scan" class="back">Stop scan</button>
-        <p class="assessment-note">Experimental review priority, not a probability of fraud or AI authorship. Page text and source only; message bodies are not scored. Unavailable pages are outside this assessment.</p>
-        <p class="help">0–19 Low · 20–49 Moderate · 50–100 High. High scores are flagged for review.</p>
+        <p class="assessment-note">Independent heuristic scores, not probabilities of fraud or AI authorship. AI/platform traces do not imply fraud. Page text and source only; message bodies are not scored. Unavailable pages are outside this assessment.</p>
+        <p class="help">Each score: 0–19 Low · 20–49 Moderate · 50–100 High indicator presence. Only high scam indicators trigger review flags.</p>
         <div class="report-actions"><button type="button" id="pdf-batch" class="report-button" hidden>Export PDF report</button><button type="button" id="export-batch" class="report-button" hidden>Export JSON</button></div>
         <p id="batch-empty" class="help" hidden>No pages are available for assessment. No safety conclusion can be made.</p>
         <div id="batch-rows"></div>
     </section>
-    <script src="script.js"></script>
+    <script src="script.js?v=dual-assessments-3"></script>
 </body>
 </html>
