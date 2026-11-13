@@ -752,6 +752,9 @@ inversión sin riesgo
 reclama tu premio
 tarjeta de regalo
 
+[Investment loss-minimization claims | 15 | text | 15 | scam]
+no fear of loss
+
 [Urgency or pressure | 20 | text | 20 | scam]
 urgent
 act now
@@ -786,6 +789,10 @@ ai-powered
 our ai
 ai writing
 ai content
+ai algorithms
+ai trading
+ai-driven trading
+ai trading bot
 content ghostwriter
 inteligencia artificial
 asistente de ia
